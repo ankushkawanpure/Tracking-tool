@@ -56,6 +56,7 @@
   },
   "devDependencies": {
     "concurrently": "^3.5.1",
+    "csvtojson": "^1.1.9",
     "electron": "^1.7.10",
     "electron-builder": "^19.52.1",
     "wait-on": "^2.0.2"
