@@ -1,0 +1,35 @@
+Transaction :
+{
+  "Date": "normal date",
+  "Marcket": "ADABTC",
+  "Type": "BUY",
+  "Price": 100,
+  "Amount": 200,
+  "Total": 111,
+  "Fee": 111,
+  "FeeCoin": "ADA"
+}
+
+{
+  Exchange: "Binance",
+  Trades: []
+}
+
+
+Mapped:
+
+
+{
+  Exchange: "Binance",
+  Mapped: [
+    {
+      "ADA" : []
+    },
+    {
+      "XRP" : []
+    },
+    {
+      "XML" : []
+    }
+    ]
+}
