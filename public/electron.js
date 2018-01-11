@@ -8,13 +8,24 @@ const url = require('url');
 const isDev = require('electron-is-dev');
 const fs = require('fs');
 const papa = require('papaparse');
+
 const template = require('./template/menus');
-// const csv=require('csvtojson');
+const Store = require('./localStorage/store');
 
 const ipc = require('electron').ipcMain
 const dialog = require('electron').dialog
 
 let mainWindow;
+
+// First instantiate the class
+const store = new Store({
+  // We'll call our data file 'user-preferences'
+  configName: 'user-preferences',
+  defaults: {
+    // 800x600 is the default size of our window
+    windowBounds: { width: 800, height: 600 }
+  }
+});
 
 function addUpdateMenuItems (items, position) {
   if (process.mas) return
@@ -118,11 +129,24 @@ if (process.platform === 'win32') {
 }
 
 function createWindow() {
+
+  let { width, height } = store.get('windowBounds');
+
+
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
-  mainWindow = new BrowserWindow({width: 900, height: 680});
+  mainWindow = new BrowserWindow({width, height});
   mainWindow.loadURL(isDev ? 'http://localhost:3000' : `file://${path.join(__dirname, '../build/index.html')}`);
   mainWindow.on('closed', () => mainWindow = null);
+
+  mainWindow.on('resize', () => {
+      // The event doesn't pass us the window size, so we call the `getBounds` method which returns an object with
+      // the height, width, and x and y coordinates.
+      let { width, height } = mainWindow.getBounds();
+      // Now that we have them, save them using the `set` method.
+      store.set('windowBounds', { width, height });
+    });
+
 }
 
 app.on('ready', createWindow);
