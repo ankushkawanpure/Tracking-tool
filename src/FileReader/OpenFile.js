@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import Styles from './OpenFile.css.js';
+import './OpenFile.css';
 
 const ipc = window.require("electron").ipcRenderer;
 
@@ -8,7 +8,9 @@ class OpenFile extends Component {
   constructor() {
     super();
     ipc.on('selected-directory', function (event, path) {
-      console.log("Selected path" + path);
+      console.log("Selected path" + typeof(path));
+
+
     });
   }
 
@@ -17,14 +19,10 @@ class OpenFile extends Component {
   }
 
   render() {
-    var style = Object.assign({},
-        Styles.open,
-        this.props.isDisabled && Styles.disabled
-      );
 
     return (
       <div>
-        <button type="button" Style={style} onClick={this.openNew}>Click Me!</button>
+        <button type="button" className="open" onClick={this.openNew}>Load Data</button>
       </div>
     );
   }

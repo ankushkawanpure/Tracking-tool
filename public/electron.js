@@ -6,142 +6,15 @@ const Menu = electron.Menu;
 const path = require('path');
 const url = require('url');
 const isDev = require('electron-is-dev');
-
-
-const csvFilePath='../TradeHistory.csv';
+const fs = require('fs');
+const papa = require('papaparse');
+const template = require('./template/menus');
 // const csv=require('csvtojson');
 
 const ipc = require('electron').ipcMain
 const dialog = require('electron').dialog
 
 let mainWindow;
-
-
-
-let template = [{
-  label: 'Edit',
-  submenu: [{
-    label: 'Undo',
-    accelerator: 'CmdOrCtrl+Z',
-    role: 'undo'
-  }, {
-    label: 'Redo',
-    accelerator: 'Shift+CmdOrCtrl+Z',
-    role: 'redo'
-  }, {
-    type: 'separator'
-  }, {
-    label: 'Cut',
-    accelerator: 'CmdOrCtrl+X',
-    role: 'cut'
-  }, {
-    label: 'Copy',
-    accelerator: 'CmdOrCtrl+C',
-    role: 'copy'
-  }, {
-    label: 'Paste',
-    accelerator: 'CmdOrCtrl+V',
-    role: 'paste'
-  }, {
-    label: 'Select All',
-    accelerator: 'CmdOrCtrl+A',
-    role: 'selectall'
-  }]
-}, {
-  label: 'View',
-  submenu: [{
-    label: 'Reload',
-    accelerator: 'CmdOrCtrl+R',
-    click: function (item, focusedWindow) {
-      if (focusedWindow) {
-        // on reload, start fresh and close any old
-        // open secondary windows
-        if (focusedWindow.id === 1) {
-          BrowserWindow.getAllWindows().forEach(function (win) {
-            if (win.id > 1) {
-              win.close()
-            }
-          })
-        }
-        focusedWindow.reload()
-      }
-    }
-  }, {
-    label: 'Toggle Full Screen',
-    accelerator: (function () {
-      if (process.platform === 'darwin') {
-        return 'Ctrl+Command+F'
-      } else {
-        return 'F11'
-      }
-    })(),
-    click: function (item, focusedWindow) {
-      if (focusedWindow) {
-        focusedWindow.setFullScreen(!focusedWindow.isFullScreen())
-      }
-    }
-  }, {
-    label: 'Toggle Developer Tools',
-    accelerator: (function () {
-      if (process.platform === 'darwin') {
-        return 'Alt+Command+I'
-      } else {
-        return 'Ctrl+Shift+I'
-      }
-    })(),
-    click: function (item, focusedWindow) {
-      if (focusedWindow) {
-        focusedWindow.toggleDevTools()
-      }
-    }
-  }, {
-    type: 'separator'
-  }, {
-    label: 'App Menu Demo',
-    click: function (item, focusedWindow) {
-      if (focusedWindow) {
-        const options = {
-          type: 'info',
-          title: 'Application Menu Demo',
-          buttons: ['Ok'],
-          message: 'This demo is for the Menu section, showing how to create a clickable menu item in the application menu.'
-        }
-        electron.dialog.showMessageBox(focusedWindow, options, function () {})
-      }
-    }
-  }]
-}, {
-  label: 'Window',
-  role: 'window',
-  submenu: [{
-    label: 'Minimize',
-    accelerator: 'CmdOrCtrl+M',
-    role: 'minimize'
-  }, {
-    label: 'Close',
-    accelerator: 'CmdOrCtrl+W',
-    role: 'close'
-  }, {
-    type: 'separator'
-  }, {
-    label: 'Reopen Window',
-    accelerator: 'CmdOrCtrl+Shift+T',
-    enabled: false,
-    key: 'reopenMenuItem',
-    click: function () {
-      app.emit('activate')
-    }
-  }]
-}, {
-  label: 'Help',
-  role: 'help',
-  submenu: [{
-    label: 'Learn More',
-    click: function () {
-      electron.shell.openExternal('http://electron.atom.io')
-    }
-  }]
-}]
 
 function addUpdateMenuItems (items, position) {
   if (process.mas) return
@@ -244,9 +117,6 @@ if (process.platform === 'win32') {
   addUpdateMenuItems(helpMenu, 0)
 }
 
-
-
-
 function createWindow() {
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
@@ -270,11 +140,75 @@ app.on('activate', () => {
 });
 
 
+ipc.on('open-file-dialog', openFile);
 
-ipc.on('open-file-dialog', function (event) {
+function openFile(event) {
+
   dialog.showOpenDialog({
-    properties: ['openFile', 'openDirectory']
-  }, function (files) {
-    if (files) event.sender.send('selected-directory', files)
-  })
-})
+    filters: [{name: 'CSV', extensions: ['csv']}],
+    properties: ['openFile']
+  }, function (file) {
+      if (file) {
+        file = file.toString();
+        console.log(typeof(file));
+        data = parsecsv(file, event);
+      }
+  });
+}
+
+function parsecsv(file, event) {
+  console.log("Filepath" + file);
+
+  var inputSteam = fs.createReadStream(file, 'utf-8');
+    papa.parse(inputSteam, {
+      header: true,
+    	complete: function(results) {
+        let ExchangeObj = parseData(results.data);
+
+        console.log("line 168" + JSON.stringify(ExchangeObj));
+
+        event.sender.send('selected-directory', results.data);
+    	}
+  });
+
+
+function parseData(data) {
+
+    let trades = data;
+    console.log(trades.length);
+    let coins = new Set(trades.map((item) => item.Market));
+
+    console.log(coins);
+
+    let exchangeName = "Binance";
+    let mapped = [];
+
+    coins.forEach((coin) => {
+      console.log("line 184" + coin);
+      let coinAndTrades = processCoin(coin, trades);
+      mapped.push(coinAndTrades);
+    })
+
+    return {
+      Exchange : exchangeName,
+      MappedTrade : mapped
+    }
+}
+
+
+function processCoin(coin, trades) {
+
+  // let coinTrades = [];
+  console.log("line 202" + coin);
+  console.log("line 203" + typeof(coin));
+  coinTrades = trades.filter(trade => trade.Market === coin);
+  console.log("line 200"+ coinTrades);
+
+  return {
+    [coin] : coinTrades
+  }
+
+}
+
+
+}
